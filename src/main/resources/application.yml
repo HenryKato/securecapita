@@ -1,20 +1,14 @@
+
 spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/securecapita
-    username: root
-    password: Bibl@77514
-  jpa:
-    database-platform: org.hibernate.dialect.MySQL8InnoDBDialect
-    generate-ddl: true
-    show-sql: true
-    hibernate:
-      ddl-auto: update
-    properties:
-      hibernate:
-        globally_quoted_identifiers: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
-  sql:
-    init:
-      mode: never
-      continue-on-error: false
+  profiles:
+    #active: dev This means it will use the application-dev.yml file. You'll see this "The following 1 profile is active: "dev"" to the console on running the application
+
+# You can do the same for prod. You'll see this "The following 1 profile is active: "prod"" to the console on running the application
+#spring:
+  #profiles:
+    #active: prod
+
+# To make the switch of profiles more dynamic we can do this. You have to define the <profiles></profiles> in the pom.xml file
+    #spring:
+    #profiles:
+    active: @spring.profiles.active@ #This is a global property that we shall use in the pom.xml file in the <properties></properties> configuration of the profiles

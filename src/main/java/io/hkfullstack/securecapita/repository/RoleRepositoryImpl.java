@@ -57,6 +57,7 @@ public class RoleRepositoryImpl implements  RoleRepository<Role>{
 
     @Override
     public void addRoleToUser(Long userId, String roleName) {
+        log.info("Adding role {} to user id: {}", roleName, userId);
         try {
             // Get the role by name from the Roles table
             Role role = namedParameterJdbcTemplate.queryForObject(SELECT_ROLE_BY_NAME_QUERY, Map.of("roleName", roleName), new RoleRowMapper());

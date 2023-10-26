@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import javax.transaction.Transactional;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -33,14 +34,18 @@ public class UserRepositoryImpl implements UserRepository<User> {
     private final BCryptPasswordEncoder passwordEncoder; //Bean must be defined
 
     @Override
+    @Transactional // If the role is not assigned to the user, then rollback everything
     public User createUser(User user) {
         if(getEmailCount(user.getEmail().trim().toLowerCase()) > 0 ) throw new ApiException("Email already in use. Please get a different one!"); //  Check that the email is unique
         //  Save the User
         try {
+            log.info("Creating User...");
             KeyHolder newUserHolder = new GeneratedKeyHolder(); //it's key contains the auto-generated id of the newly saved user
             SqlParameterSource userSqlParameters = getUserSqlParameters(user); // user fields on which the query is executed
             namedParameterJdbcTemplate.update(INSERT_USER_QUERY, userSqlParameters, newUserHolder); //save the new user
             user.setId(Objects.requireNonNull(newUserHolder.getKey()).longValue()); // newUserHolder.getKey() returns the new Id which is then set to the original user object
+
+            log.info("Adding Role to User {}", user);
             roleRepository.addRoleToUser(user.getId(), ROLE_USER.name()); //  Add role to the user. We've already set the userId, so we can get it
             String accountVerificationUrl = getVerificationUrl(UUID.randomUUID().toString(), ACCOUNT.getType()); //  Generate account verification url
             namedParameterJdbcTemplate.update(INSERT_ACCOUNT_VERIFICATION_URL_QUERY, //  Save account verification url
@@ -55,6 +60,7 @@ public class UserRepositoryImpl implements UserRepository<User> {
             //  If any errors, throw exception with proper message
         }
         catch (Exception ex) {
+            log.error(ex.getMessage());
             throw new ApiException("An error occurred. Please try again.");
         }
     }

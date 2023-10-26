@@ -14,7 +14,6 @@ import javax.validation.constraints.NotEmpty;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@JsonInclude(JsonInclude.Include.NON_DEFAULT)
 public class UserDTO {
     private Long id;
     private String firstName;
