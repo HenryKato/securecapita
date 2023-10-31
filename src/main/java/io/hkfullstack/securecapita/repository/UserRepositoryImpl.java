@@ -1,10 +1,12 @@
 package io.hkfullstack.securecapita.repository;
 
 import io.hkfullstack.securecapita.exception.ApiException;
+import io.hkfullstack.securecapita.mapper.UserRowMapper;
 import io.hkfullstack.securecapita.model.Role;
 import io.hkfullstack.securecapita.model.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
@@ -14,7 +16,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import javax.transaction.Transactional;
+import jakarta.transaction.Transactional;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -83,6 +85,22 @@ public class UserRepositoryImpl implements UserRepository<User> {
     @Override
     public Boolean deleteUser(Long id) {
         return null;
+    }
+
+    @Override
+    public User findUserByUsername(String username) {
+        try {
+            Map<String, String> queryNamedParametersMap = Map.of("username", username);
+            User user =namedParameterJdbcTemplate.queryForObject(FIND_USER_BY_EMAIL_QUERY, queryNamedParametersMap, new UserRowMapper());
+            return user;
+        } catch(EmptyResultDataAccessException ex) {
+            log.error("User with email {} is not found", username);
+            throw new ApiException("User not found with email: " + username);
+        } catch (Exception ex) {
+            log.error("error: {} ", ex.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
+
     }
 
     private Integer getEmailCount(String email) {

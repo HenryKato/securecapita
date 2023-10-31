@@ -2,27 +2,22 @@ package io.hkfullstack.securecapita.repository;
 
 import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.mapper.RoleRowMapper;
+import io.hkfullstack.securecapita.mapper.UserRowMapper;
 import io.hkfullstack.securecapita.model.Role;
+import io.hkfullstack.securecapita.model.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
-import org.springframework.jdbc.core.namedparam.SqlParameterSource;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 import static io.hkfullstack.securecapita.enumeration.RoleType.ROLE_USER;
-import static io.hkfullstack.securecapita.enumeration.VerificationType.ACCOUNT;
-import static io.hkfullstack.securecapita.query.RoleQuery.INSERT_ROLE_TO_USER_QUERY;
-import static io.hkfullstack.securecapita.query.RoleQuery.SELECT_ROLE_BY_NAME_QUERY;
-import static io.hkfullstack.securecapita.query.UserQuery.INSERT_ACCOUNT_VERIFICATION_URL_QUERY;
-import static io.hkfullstack.securecapita.query.UserQuery.INSERT_USER_QUERY;
+import static io.hkfullstack.securecapita.query.RoleQuery.*;
+import static io.hkfullstack.securecapita.query.UserQuery.*;
 
 @Repository
 @RequiredArgsConstructor //Constructor with only fields marked with final or @NonNull
@@ -83,7 +78,16 @@ public class RoleRepositoryImpl implements  RoleRepository<Role>{
 
     @Override
     public Role getRoleByUserEmail(String email) {
-        return null;
+        try {
+            Role role = namedParameterJdbcTemplate.queryForObject(FIND_ROLE_BY_USERNAME, Map.of("username", email), new RoleRowMapper());
+            return role;
+        } catch(EmptyResultDataAccessException ex) {
+            log.error("{}", ex.getMessage());
+            throw new ApiException("Error: " + ex.getMessage());
+        } catch (Exception ex) {
+            log.error("error: {} ", ex.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
     }
 
     @Override
