@@ -1,9 +1,13 @@
 package io.hkfullstack.securecapita.controller;
 
 import io.hkfullstack.securecapita.dto.UserDTO;
+import io.hkfullstack.securecapita.dtomapper.UserDTOMapper;
 import io.hkfullstack.securecapita.model.ApiResponse;
 import io.hkfullstack.securecapita.model.LoginRequest;
 import io.hkfullstack.securecapita.model.User;
+import io.hkfullstack.securecapita.model.UserPrincipal;
+import io.hkfullstack.securecapita.provider.TokenProvider;
+import io.hkfullstack.securecapita.service.RoleService;
 import io.hkfullstack.securecapita.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -32,12 +36,14 @@ public class UserController {
 
     private final UserService userService;
     private final AuthenticationManager authenticationManager;
+    private final TokenProvider tokenProvider;
+    private final RoleService roleService;
 
     @PostMapping("/login")
     public  ResponseEntity<ApiResponse> login(@Valid @RequestBody LoginRequest request) {
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
         UserDTO user = userService.getUserByEmail(request.getEmail());
-        return !user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
+        return user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
     }
 
     private ResponseEntity<ApiResponse> sendApiResponse(UserDTO user) {
@@ -45,12 +51,20 @@ public class UserController {
                 .body(
                         ApiResponse.builder()
                                 .timestamp(now().toString())
-                                .payload(of("user", user))
+                                .payload(of(
+                                        "user", user,
+                                        "access_token", tokenProvider.generateAccessToken(getUserPrincipal(user)),
+                                        "refresh_token", tokenProvider.generateRefreshToken(getUserPrincipal(user))
+                                ))
                                 .message("Logged in successfully...")
                                 .status(OK)
                                 .statusCode(OK.value())
                                 .build()
                 );
+    }
+
+    private UserPrincipal getUserPrincipal(UserDTO user) {
+        return new UserPrincipal(UserDTOMapper.toUser(user), roleService.getRoleByUserEmail(user).getPermission());
     }
 
     private ResponseEntity<ApiResponse> sendVerificationCode(UserDTO user) {
