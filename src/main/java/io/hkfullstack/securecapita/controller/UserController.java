@@ -36,13 +36,31 @@ public class UserController {
     @PostMapping("/login")
     public  ResponseEntity<ApiResponse> login(@Valid @RequestBody LoginRequest request) {
         authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
-        UserDTO userDTO = userService.getUserByEmail(request.getEmail());
+        UserDTO user = userService.getUserByEmail(request.getEmail());
+        return !user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
+    }
+
+    private ResponseEntity<ApiResponse> sendApiResponse(UserDTO user) {
         return ResponseEntity.ok()
                 .body(
                         ApiResponse.builder()
                                 .timestamp(now().toString())
-                                .payload(of("user", userDTO))
+                                .payload(of("user", user))
                                 .message("Logged in successfully...")
+                                .status(OK)
+                                .statusCode(OK.value())
+                                .build()
+                );
+    }
+
+    private ResponseEntity<ApiResponse> sendVerificationCode(UserDTO user) {
+        userService.sendVerificationCode(user);
+        return ResponseEntity.ok()
+                .body(
+                        ApiResponse.builder()
+                                .timestamp(now().toString())
+                                .payload(of("user", user))
+                                .message("Verification Code sent")
                                 .status(OK)
                                 .statusCode(OK.value())
                                 .build()

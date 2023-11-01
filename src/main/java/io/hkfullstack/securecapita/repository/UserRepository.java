@@ -1,5 +1,6 @@
 package io.hkfullstack.securecapita.repository;
 
+import io.hkfullstack.securecapita.dto.UserDTO;
 import io.hkfullstack.securecapita.model.User;
 
 import java.util.Collection;
@@ -14,4 +15,5 @@ public interface UserRepository<T extends User> {
 
     /*Complex CRUD Operations*/
     T findUserByUsername(String username);
+    void sendVerificationCode(UserDTO user);
 }

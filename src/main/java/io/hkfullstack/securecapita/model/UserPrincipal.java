@@ -48,5 +48,5 @@ public class UserPrincipal implements UserDetails {
     @Override
     public boolean isEnabled() {
         return !this.user.isEnabled();
-    } // Must be changed, should not require the negation
+    }
 }

@@ -1,9 +1,11 @@
 package io.hkfullstack.securecapita.repository;
 
+import io.hkfullstack.securecapita.dto.UserDTO;
 import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.mapper.UserRowMapper;
 import io.hkfullstack.securecapita.model.Role;
 import io.hkfullstack.securecapita.model.User;
+import io.hkfullstack.securecapita.utils.TwilioUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -17,14 +19,17 @@ import org.springframework.stereotype.Repository;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import jakarta.transaction.Transactional;
-import java.util.Collection;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
+
+import java.util.*;
 
 import static io.hkfullstack.securecapita.enumeration.RoleType.ROLE_USER;
 import static io.hkfullstack.securecapita.enumeration.VerificationType.ACCOUNT;
+import static io.hkfullstack.securecapita.query.TwoFactorQuery.DELETE_EXISTING_CODE_BY_USER_ID_QUERY;
+import static io.hkfullstack.securecapita.query.TwoFactorQuery.INSERT_NEW_CODE_BY_USER_ID_QUERY;
 import static io.hkfullstack.securecapita.query.UserQuery.*;
+import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
+import static org.apache.commons.lang3.time.DateFormatUtils.format;
+import static org.apache.commons.lang3.time.DateUtils.addDays;
 
 @Repository
 @RequiredArgsConstructor //Constructor with only fields marked with final or @NonNull
@@ -34,6 +39,7 @@ public class UserRepositoryImpl implements UserRepository<User> {
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     private final RoleRepository<Role> roleRepository;
     private final BCryptPasswordEncoder passwordEncoder; //Bean must be defined
+    private static final String DATE_PATTERN = "yyyy-MM-dd hh:mm:ss";
 
     @Override
     @Transactional // If the role is not assigned to the user, then rollback everything
@@ -54,7 +60,7 @@ public class UserRepositoryImpl implements UserRepository<User> {
                     Map.of("userId", user.getId(), "url", accountVerificationUrl)); // Account verification table needs the userId and the verification url
             //  Send account verification url to the user via email
             // emailService.sendVerificationUrl(user.getFirstName(), user.getEmail(), accountVerificationUrl, ACCOUNT);
-            user.setEnabled(false);
+            user.setEnabled(true);
             user.setNotLocked(true);
 
             //Return the newly created user
@@ -101,6 +107,32 @@ public class UserRepositoryImpl implements UserRepository<User> {
             throw new ApiException("An error occurred. Please try again.");
         }
 
+    }
+
+    @Override
+    public void sendVerificationCode(UserDTO user) {
+        // Generate the code - Leverage Apache Commons API
+        String verificationCode = randomAlphanumeric(6).toUpperCase();
+        // Generate the expiration date for that code - Leverage Apache Commons API
+        String expirationDate = format(addDays(new Date(), 1), DATE_PATTERN);
+
+        try {
+            // Delete any existing code(s) for this user in the TwoFactorVerifications table
+            namedParameterJdbcTemplate.update(DELETE_EXISTING_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId()));
+            // Save the new code into the TwoFactorVerifications Table
+            namedParameterJdbcTemplate.update(INSERT_NEW_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId(), "code", verificationCode, "expirationDate", expirationDate));
+
+            // Send the code in an SMS text message - Leverage Twilio but for I'll do something else
+            sendSMS(user.getPhone(), "Your Secure Capita Code: \n " + verificationCode);
+        } catch (Exception ex) {
+            log.error("error: {} ", ex.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
+
+    }
+
+    private void sendSMS(String phone, String verificationCode) {
+        TwilioUtils.sendSMS(phone, verificationCode);
     }
 
     private Integer getEmailCount(String email) {
