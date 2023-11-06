@@ -14,6 +14,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -42,7 +43,7 @@ public class UserController {
         return user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
     }
 
-    @PostMapping("/")
+    @PostMapping("/register")
     public ResponseEntity<SecureApiResponse> createUser(@RequestBody @Valid User user) {
         UserDTO userDto = userService.createUser(user);
         MultiValueMap<String, String> headers = new HttpHeaders();
@@ -57,11 +58,20 @@ public class UserController {
     public ResponseEntity<SecureApiResponse> verifyCode(@PathVariable("email") String email, @PathVariable("code") String code) {
         UserDTO user = userService.verifyCode(email, code);
         return ResponseEntity.ok()
-                .body(SecureApiResponse.builder().timestamp(now().toString()).payload(of(
-                        "user", user,
+                .body(SecureApiResponse.builder().timestamp(now().toString())
+                        .payload(of("user", user,
                         "access_token", tokenProvider.generateAccessToken(getUserPrincipal(user)),
-                        "refresh_token", tokenProvider.generateRefreshToken(getUserPrincipal(user))
-                )).message("Logged in successfully...").status(OK).statusCode(OK.value()).build());
+                        "refresh_token", tokenProvider.generateRefreshToken(getUserPrincipal(user))))
+                        .message("Logged in successfully...").status(OK).statusCode(OK.value()).build());
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<SecureApiResponse> profile(Authentication authentication) {
+        UserDTO user = userService.getUserByEmail(authentication.getName());
+        return ResponseEntity.ok()
+                .body(SecureApiResponse.builder().timestamp(now().toString())
+                        .payload(of("user", user)).message("Profile retrieved successfully...")
+                        .status(OK).statusCode(OK.value()).build());
     }
 
     private URI getUri() {

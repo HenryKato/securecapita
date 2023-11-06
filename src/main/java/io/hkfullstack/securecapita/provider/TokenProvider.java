@@ -85,7 +85,7 @@ public class TokenProvider {
 
     private boolean isTokenExpired(JWTVerifier verifier, String token) {
         Date expiration = verifier.verify(token).getExpiresAt();
-        return expiration.after(new Date());
+        return expiration.before(new Date());
     }
 
     private String[] getClaimsFromToken(String token) {
