@@ -8,6 +8,7 @@ import io.hkfullstack.securecapita.model.User;
 import io.hkfullstack.securecapita.utils.TwilioUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -30,6 +31,7 @@ import static io.hkfullstack.securecapita.query.UserQuery.*;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.apache.commons.lang3.time.DateFormatUtils.format;
 import static org.apache.commons.lang3.time.DateUtils.addDays;
+import static org.apache.commons.lang3.time.DateUtils.addSeconds;
 
 @Repository
 @RequiredArgsConstructor //Constructor with only fields marked with final or @NonNull
@@ -114,21 +116,39 @@ public class UserRepositoryImpl implements UserRepository<User> {
         // Generate the code - Leverage Apache Commons API
         String verificationCode = randomAlphanumeric(6).toUpperCase();
         // Generate the expiration date for that code - Leverage Apache Commons API
-        String expirationDate = format(addDays(new Date(), 1), DATE_PATTERN);
-
+        String expirationDate = format(addDays(new Date(), 20), DATE_PATTERN);
         try {
             // Delete any existing code(s) for this user in the TwoFactorVerifications table
             namedParameterJdbcTemplate.update(DELETE_EXISTING_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId()));
             // Save the new code into the TwoFactorVerifications Table
             namedParameterJdbcTemplate.update(INSERT_NEW_CODE_BY_USER_ID_QUERY, Map.of("userId", user.getId(), "code", verificationCode, "expirationDate", expirationDate));
-
             // Send the code in an SMS text message - Leverage Twilio but for I'll do something else
-            sendSMS(user.getPhone(), "Your Secure Capita Code: \n " + verificationCode);
+            // sendSMS(user.getPhone(), "Your Secure Capita Code: \n " + verificationCode);
+            log.info("Verification Code: {} ", verificationCode);
         } catch (Exception ex) {
             log.error("error: {} ", ex.getMessage());
             throw new ApiException("An error occurred. Please try again.");
         }
+    }
 
+    @Override
+    public User verifyCode(String email, String code) {
+        User userByEmail = findUserByUsername(email);
+        try {
+            User userByCode = namedParameterJdbcTemplate.queryForObject(FIND_USER_BY_CODE_QUERY, Map.of("code", code, "expDate", new Date()), new UserRowMapper());
+                if(userByCode.getEmail().equalsIgnoreCase(userByEmail.getEmail())) {
+                    namedParameterJdbcTemplate.update(DELETE_EXISTING_CODE_BY_USER_ID_QUERY, Map.of("userId", userByCode.getId()));
+                    return userByCode;
+                } else {
+                    throw new ApiException("User with email: " + email + ", does not exist. Please login again.");
+                }
+        } catch(EmptyResultDataAccessException ex) {
+            log.error("Invalid code {} ", code);
+            throw new ApiException("Invalid code: " + code + ", Please login again");
+        } catch (Exception ex) {
+            log.error("error: {} ", ex.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
     }
 
     private void sendSMS(String phone, String verificationCode) {

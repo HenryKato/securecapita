@@ -1,6 +1,7 @@
 package io.hkfullstack.securecapita.dtomapper;
 
 import io.hkfullstack.securecapita.dto.UserDTO;
+import io.hkfullstack.securecapita.model.Role;
 import io.hkfullstack.securecapita.model.User;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Component;
@@ -10,6 +11,14 @@ public class UserDTOMapper {
     public static UserDTO fromUser(User user) {
         UserDTO userDTO = new UserDTO();
         BeanUtils.copyProperties(user, userDTO);
+        return userDTO;
+    }
+
+    public static UserDTO fromUser(User user, Role role) {
+        UserDTO userDTO = new UserDTO();
+        BeanUtils.copyProperties(user, userDTO);
+        userDTO.setPermissions(role.getPermission());
+        userDTO.setRoleName(role.getName());
         return userDTO;
     }
 

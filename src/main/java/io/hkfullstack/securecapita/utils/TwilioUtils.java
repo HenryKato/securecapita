@@ -10,7 +10,7 @@ public class TwilioUtils {
 
     public static final String FROM_NUMBER = "+18777152217";
     public static final String SID_KEY = "ACb2f43604c83c00dd00bdcf6b739b33dd";
-    public static final String TOKEN_KEY = "";
+    public static final String TOKEN_KEY = "8a21b3e56c590f8a38861b38cd387043";
 
     public static void sendSMS(String to, String messageBody) {
         Twilio.init(SID_KEY, TOKEN_KEY);

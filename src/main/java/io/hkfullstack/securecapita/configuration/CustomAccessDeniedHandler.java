@@ -1,7 +1,7 @@
 package io.hkfullstack.securecapita.configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.hkfullstack.securecapita.model.ApiResponse;
+import io.hkfullstack.securecapita.model.SecureApiResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import static org.springframework.http.MediaType.APPLICATION_JSON_VALUE;
 public class CustomAccessDeniedHandler implements AccessDeniedHandler {
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException) throws IOException, ServletException {
-        ApiResponse apiResponse = ApiResponse.builder()
+        SecureApiResponse secureApiResponse = SecureApiResponse.builder()
                 .timestamp(now().toString())
                 .reason("You don't permission for this resource")
                 .status(FORBIDDEN)
@@ -30,7 +30,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
         response.setContentType(APPLICATION_JSON_VALUE);
         OutputStream outputStream = response.getOutputStream();
         ObjectMapper mapper = new ObjectMapper();
-        mapper.writeValue(outputStream, apiResponse);
+        mapper.writeValue(outputStream, secureApiResponse);
         outputStream.flush();
     }
 }

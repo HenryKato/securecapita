@@ -12,7 +12,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_DEFAULT;
 @Data
 @SuperBuilder
 @JsonInclude(NON_DEFAULT)
-public class ApiResponse {
+public class SecureApiResponse {
     protected String timestamp;
     protected int statusCode;
     protected HttpStatus status;

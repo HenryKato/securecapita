@@ -1,12 +1,10 @@
 package io.hkfullstack.securecapita.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
-@Data
+@Getter
+@Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -24,4 +22,6 @@ public class UserDTO {
     private boolean isUsingMfa;
     private String createdAt;
     private String imageUrl;
+    private String roleName;
+    private String permissions;
 }
