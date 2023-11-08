@@ -6,9 +6,12 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.InvalidClaimException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.exceptions.TokenExpiredException;
+import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.model.UserPrincipal;
+import io.hkfullstack.securecapita.service.UserService;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -25,6 +28,7 @@ import static java.lang.System.currentTimeMillis;
 import static java.util.Arrays.stream;
 
 @Component
+@RequiredArgsConstructor
 public class TokenProvider {
 
     private static final String HK_INC = "HK_INC";
@@ -32,6 +36,7 @@ public class TokenProvider {
     private static final long ACCESS_TOKEN_EXPIRATION_TIME = 1_800_000;
     private static final String CLAIMS = "claims";
     private static final long REFRESH_TOKEN_EXPIRATION_TIME = 432_000_000;
+    private final UserService userService;
 
     @Value("${jwt.secret}")
     private String secret;
@@ -60,14 +65,17 @@ public class TokenProvider {
     }
 
     public Authentication getAuthentication(String email, List<GrantedAuthority> authorities, HttpServletRequest request) {
-        UsernamePasswordAuthenticationToken userPassAuthToken = new UsernamePasswordAuthenticationToken(email, null, authorities);
+        UsernamePasswordAuthenticationToken userPassAuthToken = new UsernamePasswordAuthenticationToken(userService.getUserByEmail(email), null, authorities);
         userPassAuthToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         return userPassAuthToken;
     }
 
     public boolean isTokenValid(String email, String token) {
         JWTVerifier verifier = getJWTVerifier();
-        return StringUtils.isNotEmpty(email) && !isTokenExpired(verifier, token);
+        if(StringUtils.isNotEmpty(email) && !isTokenExpired(verifier, token))
+            return true;
+        throw new ApiException("Token invalid");
+//        return StringUtils.isNotEmpty(email) && !isTokenExpired(verifier, token);
     }
 
     public String getSubject(String token, HttpServletRequest request) {

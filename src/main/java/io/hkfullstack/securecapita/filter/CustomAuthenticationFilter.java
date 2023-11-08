@@ -1,5 +1,6 @@
 package io.hkfullstack.securecapita.filter;
 
+import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.provider.TokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import static io.hkfullstack.securecapita.utils.ExceptionUtils.processError;
 import static java.util.Arrays.asList;
 import static java.util.Map.*;
 import static java.util.Optional.ofNullable;
@@ -40,15 +42,19 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
         try {
             Map<String, String> requestValues = getRequestValues(request); // The token in the values here will have a prefix of "Bearer "
             String token = getToken(request); // This is actual token without the "Bearer " prefix
-            if(tokenProvider.isTokenValid(requestValues.get(EMAIL_KEY), token)) {
+            boolean isTokenValid = tokenProvider.isTokenValid(requestValues.get(EMAIL_KEY), token);
+            if(isTokenValid) {
                 List<GrantedAuthority> authorities = tokenProvider.getUserClaimsFromToken(requestValues.get(TOKEN_KEY));
                 Authentication authentication = tokenProvider.getAuthentication(requestValues.get(EMAIL_KEY), authorities, request);
                 SecurityContextHolder.getContext().setAuthentication(authentication); // Authenticated user
-            } else { SecurityContextHolder.clearContext(); }
+            } else {
+                SecurityContextHolder.clearContext();
+//                throw new ApiException("Token Expired");
+            }
             filterChain.doFilter(request, response); // Let the request proceed to the next filter(s)
-        } catch (Exception ex) {
+        } catch (RuntimeException ex) {
             log.error(ex.getMessage());
-//          processError(request, response, ex);
+            processError(request, response, ex);
         }
     }
 

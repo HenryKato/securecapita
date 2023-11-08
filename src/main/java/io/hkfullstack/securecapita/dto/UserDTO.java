@@ -3,8 +3,7 @@ package io.hkfullstack.securecapita.dto;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
-@Getter
-@Setter
+@Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor

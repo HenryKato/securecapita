@@ -1,6 +1,7 @@
 package io.hkfullstack.securecapita.configuration;
 
 
+import io.hkfullstack.securecapita.model.Role;
 import io.hkfullstack.securecapita.model.User;
 import io.hkfullstack.securecapita.model.UserPrincipal;
 import io.hkfullstack.securecapita.repository.RoleRepository;
@@ -22,7 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findUserByUsername(username);
-        String permissions = roleRepository.getRoleByUserEmail(username).getPermission();
-        return new UserPrincipal(user, permissions);
+        Role role = roleRepository.getRoleByUserEmail(username);
+        return new UserPrincipal(user, role);
     }
 }
