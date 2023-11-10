@@ -13,7 +13,7 @@ import static io.hkfullstack.securecapita.dtomapper.UserDTOMapper.fromUser;
 import static java.util.Arrays.stream;
 
 @RequiredArgsConstructor
-public class UserPrincipal implements UserDetails {
+public class UserPrincipal implements UserDetails  {
 
     private final User user;
     private final Role role;
@@ -53,6 +53,6 @@ public class UserPrincipal implements UserDetails {
     }
 
     public UserDTO getUser() {
-        return fromUser(this.user, this.role);
+        return fromUser(this.user, role);
     }
 }

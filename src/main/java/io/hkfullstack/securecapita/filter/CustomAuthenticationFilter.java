@@ -49,7 +49,6 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext().setAuthentication(authentication); // Authenticated user
             } else {
                 SecurityContextHolder.clearContext();
-//                throw new ApiException("Token Expired");
             }
             filterChain.doFilter(request, response); // Let the request proceed to the next filter(s)
         } catch (RuntimeException ex) {

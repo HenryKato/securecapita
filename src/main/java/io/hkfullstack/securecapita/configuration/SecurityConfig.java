@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
-    private static final String[] PUBLIC_URLS = { "/users/login/**", "/users/verify/**", "/users/profile/**" };
+    private static final String[] PUBLIC_URLS = { "/users/login/**", "/users/verify/**" };
     private final CustomAccessDeniedHandler accessDeniedHandler;
     private final CustomAuthenticationEntryPoint authenticationEntryPoint;
     private final CustomAuthenticationFilter customAuthenticationFilter;

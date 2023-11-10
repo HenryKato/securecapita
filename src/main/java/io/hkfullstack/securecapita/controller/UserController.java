@@ -25,10 +25,12 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import jakarta.validation.Valid;
 import java.net.URI;
 
+import static io.hkfullstack.securecapita.dtomapper.UserDTOMapper.*;
 import static io.hkfullstack.securecapita.utils.ExceptionUtils.processError;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpStatus.*;
+import static org.springframework.security.authentication.UsernamePasswordAuthenticationToken.unauthenticated;
 
 @RestController
 @RequestMapping("/users")
@@ -46,18 +48,18 @@ public class UserController {
     public  ResponseEntity<SecureApiResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticateUser(loginRequest.getEmail(), loginRequest.getPassword());
         UserDTO user = getAuthenticatedUser(authentication);
-        System.out.println(user.toString());
-        System.out.println(authentication);
         return user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
     }
 
     private UserDTO getAuthenticatedUser(Authentication authentication) {
-        return ((UserPrincipal) authentication.getPrincipal()).getUser();
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        UserDTO userDTO = principal.getUser();
+        return userDTO;
     }
 
     private Authentication authenticateUser(String email, String password) {
         try {
-            return authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+            return authenticationManager.authenticate(unauthenticated(email, password));
         } catch (Exception ex) {
             processError(request, response, ex);
             throw new ApiException(ex.getMessage());
@@ -88,7 +90,7 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<SecureApiResponse> profile(Authentication authentication) {
-        UserDTO user = getAuthenticatedUser(authentication);
+        UserDTO user = userService.getUserByEmail(authentication.getName());
         return ResponseEntity.ok()
                 .body(SecureApiResponse.builder().timestamp(now().toString())
                         .payload(of("user", user)).message("Profile retrieved successfully...")
@@ -109,7 +111,7 @@ public class UserController {
     }
 
     private UserPrincipal getUserPrincipal(UserDTO user) {
-        return new UserPrincipal(UserDTOMapper.toUser(user), roleService.getRoleByUserEmail(user));
+        return new UserPrincipal(toUser(userService.getUserByEmail(user.getEmail())), roleService.getRoleByUserEmail(user));
     }
 
     private ResponseEntity<SecureApiResponse> sendVerificationCode(UserDTO user) {
