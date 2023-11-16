@@ -51,21 +51,6 @@ public class UserController {
         return user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
     }
 
-    private UserDTO getAuthenticatedUser(Authentication authentication) {
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        UserDTO userDTO = principal.getUser();
-        return userDTO;
-    }
-
-    private Authentication authenticateUser(String email, String password) {
-        try {
-            return authenticationManager.authenticate(unauthenticated(email, password));
-        } catch (Exception ex) {
-            processError(request, response, ex);
-            throw new ApiException(ex.getMessage());
-        }
-    }
-
     @PostMapping("/register")
     public ResponseEntity<SecureApiResponse> createUser(@RequestBody @Valid User user) {
         UserDTO userDto = userService.createUser(user);
@@ -77,6 +62,17 @@ public class UserController {
                         .status(CREATED).statusCode(CREATED.value()).build());
     }
 
+    @GetMapping("/resetpassword/{email}")
+    public ResponseEntity<SecureApiResponse> resetPassword(@PathVariable("email") String email) {
+        userService.resetPassword(email);
+        return ResponseEntity.created(getUri()).body(
+                SecureApiResponse.builder().timestamp(now().toString())
+                        .message("Password reset url sent. Please check your email.")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
     @GetMapping("/verify/{email}/{code}")
     public ResponseEntity<SecureApiResponse> verifyCode(@PathVariable("email") String email, @PathVariable("code") String code) {
         UserDTO user = userService.verifyCode(email, code);
@@ -86,6 +82,29 @@ public class UserController {
                         "access_token", tokenProvider.generateAccessToken(getUserPrincipal(user)),
                         "refresh_token", tokenProvider.generateRefreshToken(getUserPrincipal(user))))
                         .message("Logged in successfully...").status(OK).statusCode(OK.value()).build());
+    }
+
+    @GetMapping("/verify/password/{key}")
+    public ResponseEntity<SecureApiResponse> verifyPasswordUrl(@PathVariable("key") String key) {
+        UserDTO user = userService.verifyPasswordKey(key);
+        return ResponseEntity.ok()
+                .body(SecureApiResponse.builder().timestamp(now().toString())
+                        .payload(of("user", user))
+                        .message("Please enter a new password.")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @PutMapping ("/reset/password/{key}/{password}/{confirmPassword}")
+    public ResponseEntity<SecureApiResponse> updateUserPassword(@PathVariable("key") String key, @PathVariable("password") String password, @PathVariable("confirmPassword") String confirmPassword) {
+        userService.updateUserPassword(key, password, confirmPassword);
+        return ResponseEntity.ok()
+                .body(SecureApiResponse.builder().timestamp(now().toString())
+                        .message("Your password has been updated successfully...")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
     }
 
     @GetMapping("/profile")
@@ -122,6 +141,21 @@ public class UserController {
                                 .message("Verification Code sent").status(OK)
                                 .statusCode(OK.value()).build()
                 );
+    }
+
+    private UserDTO getAuthenticatedUser(Authentication authentication) {
+        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        UserDTO userDTO = principal.getUser();
+        return userDTO;
+    }
+
+    private Authentication authenticateUser(String email, String password) {
+        try {
+            return authenticationManager.authenticate(unauthenticated(email, password));
+        } catch (Exception ex) {
+            processError(request, response, ex);
+            throw new ApiException(ex.getMessage());
+        }
     }
 
 }

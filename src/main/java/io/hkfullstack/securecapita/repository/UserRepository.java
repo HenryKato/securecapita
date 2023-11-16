@@ -7,7 +7,7 @@ import java.util.Collection;
 
 public interface UserRepository<T extends User> {
     /* Basic CRUD Operations */
-    T createUser(T user);
+    T createUser(T user, String accountVerificationUrl);
     T getUser(Long id);
     Collection<T> getUsers(int page, int pageSize);
     void updateUser(T user);
@@ -15,7 +15,13 @@ public interface UserRepository<T extends User> {
 
     /*Complex CRUD Operations*/
     T findUserByUsername(String username);
-    void sendVerificationCode(UserDTO user);
+    void sendVerificationCode(UserDTO user, String verificationCode, String expirationDate);
 
     User verifyCode(String email, String code);
+
+    void resetPassword(String email, String resetPasswordUrl, String expirationDate);
+
+    T verifyPasswordKey(String passwordUrl);
+
+    void updateUserPassword(String password, String passwordVerificationUrl);
 }
