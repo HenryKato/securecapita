@@ -182,6 +182,19 @@ public class UserRepositoryImpl implements UserRepository<User> {
         }
     }
 
+    @Override
+    public User verifyAccountKey(String accountVerificationUrl) {
+        try {
+            User user = namedParameterJdbcTemplate.queryForObject(SELECT_USER_BY_ACCOUNT_VERIFICATION_URL_QUERY, of("url", accountVerificationUrl), new UserRowMapper());
+            namedParameterJdbcTemplate.update(UPDATE_USER_ENABLED_QUERY, of("enabled", true, "userId", user.getId()));
+            return user;
+        } catch(EmptyResultDataAccessException ex) {
+            throw new ApiException("This link is invalid. Please verify your account again.");
+        } catch(Exception ex) {
+            throw new ApiException("An error occurred. Please try again");
+        }
+    }
+
     private Boolean isUrlExpired(String passwordUrl) {
         try {
             return namedParameterJdbcTemplate.queryForObject(SELECT_EXPIRATION_BY_PASSWORD_URL_QUERY, of("url", passwordUrl), Boolean.class);

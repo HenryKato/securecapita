@@ -1,7 +1,6 @@
 package io.hkfullstack.securecapita.controller;
 
 import io.hkfullstack.securecapita.dto.UserDTO;
-import io.hkfullstack.securecapita.dtomapper.UserDTOMapper;
 import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.model.SecureApiResponse;
 import io.hkfullstack.securecapita.model.LoginRequest;
@@ -16,7 +15,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
@@ -29,6 +27,7 @@ import static io.hkfullstack.securecapita.dtomapper.UserDTOMapper.*;
 import static io.hkfullstack.securecapita.utils.ExceptionUtils.processError;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
+import static org.springframework.http.HttpHeaders.AUTHORIZATION;
 import static org.springframework.http.HttpStatus.*;
 import static org.springframework.security.authentication.UsernamePasswordAuthenticationToken.unauthenticated;
 
@@ -43,6 +42,7 @@ public class UserController {
     private final RoleService roleService;
     private final HttpServletRequest request;
     private final HttpServletResponse response;
+    private static final String TOKEN_PREFIX = "Bearer ";
 
     @PostMapping("/login")
     public  ResponseEntity<SecureApiResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -60,6 +60,17 @@ public class UserController {
                 SecureApiResponse.builder().timestamp(now().toString())
                         .payload(of("user", userDto)).message("User created")
                         .status(CREATED).statusCode(CREATED.value()).build());
+    }
+
+    @PutMapping("/verify/account/{key}")
+    public ResponseEntity<SecureApiResponse> verifyAccount(@PathVariable("key") String key) {
+        UserDTO user = userService.verifyAccountKey(key);
+        return ResponseEntity.ok()
+                .body(SecureApiResponse.builder().timestamp(now().toString())
+                        .message(user.isEnabled() ? "Account already verified" : "Your account is now verified")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
     }
 
     @GetMapping("/resetpassword/{email}")
@@ -82,6 +93,31 @@ public class UserController {
                         "access_token", tokenProvider.generateAccessToken(getUserPrincipal(user)),
                         "refresh_token", tokenProvider.generateRefreshToken(getUserPrincipal(user))))
                         .message("Logged in successfully...").status(OK).statusCode(OK.value()).build());
+    }
+
+    @GetMapping("/refresh/token")
+    public ResponseEntity<SecureApiResponse> generateNewAccessToken(HttpServletRequest request) {
+        String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
+        if(isHeaderAndTokenValid(request, token)) {
+            UserDTO user = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            return ResponseEntity.ok()
+                    .body(SecureApiResponse.builder().timestamp(now().toString())
+                            .payload(of("user", user,
+                                    "access_token", tokenProvider.generateAccessToken(getUserPrincipal(user)),
+                                    "refresh_token", token))
+                            .message("New Access Token Sent").status(OK).statusCode(OK.value()).build());
+        } else {
+            return ResponseEntity.badRequest()
+                    .body(SecureApiResponse.builder().timestamp(now().toString())
+                            .reason("Refresh Token Invalid or Missing in your request")
+                            .status(BAD_REQUEST).statusCode(BAD_REQUEST.value()).build());
+        }
+    }
+
+    private boolean isHeaderAndTokenValid(HttpServletRequest request, String token) {
+        String email = tokenProvider.getSubject(token, request);
+        String requestAuthHeader = request.getHeader(AUTHORIZATION);
+        return tokenProvider.isTokenValid(email, token) && requestAuthHeader != null && requestAuthHeader.startsWith(TOKEN_PREFIX);
     }
 
     @GetMapping("/verify/password/{key}")
@@ -111,9 +147,13 @@ public class UserController {
     public ResponseEntity<SecureApiResponse> profile(Authentication authentication) {
         UserDTO user = userService.getUserByEmail(authentication.getName());
         return ResponseEntity.ok()
-                .body(SecureApiResponse.builder().timestamp(now().toString())
-                        .payload(of("user", user)).message("Profile retrieved successfully...")
-                        .status(OK).statusCode(OK.value()).build());
+                .body(SecureApiResponse.builder()
+                        .timestamp(now().toString())
+                        .payload(of("user", user))
+                        .message("Profile retrieved successfully...")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
     }
 
     private URI getUri() {

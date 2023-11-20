@@ -72,6 +72,12 @@ public class UserServiceImpl implements UserService {
         userRepository.updateUserPassword(password, passwordVerificationUrl);
     }
 
+    @Override
+    public UserDTO verifyAccountKey(String key) {
+        String accountVerificationUrl = getVerificationUrl(key, ACCOUNT.getType());
+        return mapToUserDTO(userRepository.verifyAccountKey(accountVerificationUrl));
+    }
+
     private String getVerificationUrl(String urlKey, String verificationType) {
         return ServletUriComponentsBuilder.fromCurrentContextPath()
                 .path("/users/verify/" + verificationType + "/" + urlKey).toUriString(); // Backend Url which we will change in the UI since context path of the UI is different
