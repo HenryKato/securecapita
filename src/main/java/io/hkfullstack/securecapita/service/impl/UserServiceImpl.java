@@ -20,7 +20,7 @@ import static io.hkfullstack.securecapita.enumeration.VerificationType.ACCOUNT;
 import static io.hkfullstack.securecapita.enumeration.VerificationType.PASSWORD;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 import static org.apache.commons.lang3.time.DateFormatUtils.format;
-import static org.apache.commons.lang3.time.DateUtils.addDays;
+import static org.apache.commons.lang3.time.DateUtils.*;
 
 @Service
 @RequiredArgsConstructor
@@ -43,7 +43,7 @@ public class UserServiceImpl implements UserService {
     @Override
     public void sendVerificationCode(UserDTO user) {
         String verificationCode = randomAlphanumeric(6).toUpperCase();
-        String expirationDate = format(addDays(new Date(), 1), DATE_PATTERN);
+        String expirationDate = format(addMinutes(new Date(), 300), DATE_PATTERN);
         userRepository.sendVerificationCode(user, verificationCode, expirationDate);
     }
 

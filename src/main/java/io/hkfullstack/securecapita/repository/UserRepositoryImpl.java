@@ -102,7 +102,6 @@ public class UserRepositoryImpl implements UserRepository<User> {
             log.error("error: {} ", ex.getMessage());
             throw new ApiException("An error occurred. Please try again.");
         }
-
     }
 
     @Override

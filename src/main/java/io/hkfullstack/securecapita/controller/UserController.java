@@ -34,6 +34,7 @@ import static org.springframework.security.authentication.UsernamePasswordAuthen
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:4200")
 public class UserController {
 
     private final UserService userService;
@@ -193,7 +194,7 @@ public class UserController {
         try {
             return authenticationManager.authenticate(unauthenticated(email, password));
         } catch (Exception ex) {
-            processError(request, response, ex);
+//            processError(request, response, ex);
             throw new ApiException(ex.getMessage());
         }
     }
