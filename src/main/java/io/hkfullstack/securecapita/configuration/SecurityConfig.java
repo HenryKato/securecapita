@@ -27,8 +27,9 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf().disable();
-        httpSecurity.cors().disable();
+        httpSecurity
+                .cors().and()  // Enable CORS
+                .csrf().disable();
         httpSecurity.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)); // don't manage session state because we are using token-based authentication
         httpSecurity.authorizeHttpRequests().requestMatchers(PUBLIC_URLS).permitAll(); // No need of authentication for these public urls
         httpSecurity.authorizeHttpRequests().requestMatchers(HttpMethod.DELETE, "/users/**").hasAnyAuthority("DELETE:USER"); // to delete a user, the user must be authorized

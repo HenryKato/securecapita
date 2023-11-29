@@ -4,6 +4,7 @@ import io.hkfullstack.securecapita.dto.UserDTO;
 import io.hkfullstack.securecapita.dtomapper.UserDTOMapper;
 import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.model.Role;
+import io.hkfullstack.securecapita.model.UpdateUserRequest;
 import io.hkfullstack.securecapita.model.User;
 import io.hkfullstack.securecapita.repository.RoleRepository;
 import io.hkfullstack.securecapita.repository.UserRepository;
@@ -76,6 +77,16 @@ public class UserServiceImpl implements UserService {
     public UserDTO verifyAccountKey(String key) {
         String accountVerificationUrl = getVerificationUrl(key, ACCOUNT.getType());
         return mapToUserDTO(userRepository.verifyAccountKey(accountVerificationUrl));
+    }
+
+    @Override
+    public UserDTO updateUser(UpdateUserRequest request) {
+        return mapToUserDTO(userRepository.updateUser(request));
+    }
+
+    @Override
+    public UserDTO getUserById(Long userId) {
+        return mapToUserDTO(userRepository.getUser(userId));
     }
 
     private String getVerificationUrl(String urlKey, String verificationType) {

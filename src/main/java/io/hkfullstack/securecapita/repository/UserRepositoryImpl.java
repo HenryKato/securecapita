@@ -4,6 +4,7 @@ import io.hkfullstack.securecapita.dto.UserDTO;
 import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.mapper.UserRowMapper;
 import io.hkfullstack.securecapita.model.Role;
+import io.hkfullstack.securecapita.model.UpdateUserRequest;
 import io.hkfullstack.securecapita.model.User;
 import io.hkfullstack.securecapita.utils.TwilioUtils;
 import lombok.RequiredArgsConstructor;
@@ -58,7 +59,6 @@ public class UserRepositoryImpl implements UserRepository<User> {
             // emailService.sendVerificationUrl(user.getFirstName(), user.getEmail(), accountVerificationUrl, ACCOUNT);
             user.setEnabled(true);
             user.setNotLocked(true);
-
             //Return the newly created user
             return user;
             //  If any errors, throw exception with proper message
@@ -71,7 +71,15 @@ public class UserRepositoryImpl implements UserRepository<User> {
 
     @Override
     public User getUser(Long id) {
-        return null;
+        try {
+            return namedParameterJdbcTemplate.queryForObject(FIND_USER_BY_ID_QUERY, of("id", id), new UserRowMapper());
+        } catch(EmptyResultDataAccessException ex) {
+            log.error("User with id {} is not found", id);
+            throw new ApiException("User not found with id: " + id);
+        } catch (Exception ex) {
+            log.error("error: {} ", ex.getMessage());
+            throw new ApiException("An error occurred. Please try again.");
+        }
     }
 
     @Override
@@ -80,8 +88,15 @@ public class UserRepositoryImpl implements UserRepository<User> {
     }
 
     @Override
-    public void updateUser(User user) {
-
+    public User updateUser(UpdateUserRequest request) {
+        try {
+            SqlParameterSource userDetailsSqlParameters = getUserDetailsSqlParameters(request);
+            namedParameterJdbcTemplate.update(UPDATE_USER_DETAILS, userDetailsSqlParameters);
+            return getUser(request.getId());
+        } catch(EmptyResultDataAccessException ex) {
+            log.error("User with email {} is not found", request.getEmail());
+            throw new ApiException("User not found with email: " + request.getEmail());
+        }
     }
 
     @Override
@@ -220,5 +235,17 @@ public class UserRepositoryImpl implements UserRepository<User> {
                 .addValue("lastName", user.getLastName())
                 .addValue("email", user.getEmail())
                 .addValue("password", passwordEncoder.encode(user.getPassword())); // we can't store a raw password inside the database
+    }
+
+    private SqlParameterSource getUserDetailsSqlParameters(UpdateUserRequest request) { // parameters used to save a user into the database
+        return new MapSqlParameterSource()
+                .addValue("id", request.getId())
+                .addValue("firstName", request.getFirstName())
+                .addValue("lastName", request.getLastName())
+                .addValue("email", request.getEmail())
+                .addValue("phone", request.getPhone())
+                .addValue("address", request.getAddress())
+                .addValue("bio", request.getBio())
+                .addValue("title", request.getTitle());
     }
 }

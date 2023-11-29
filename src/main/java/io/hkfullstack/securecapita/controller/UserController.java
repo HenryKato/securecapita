@@ -2,10 +2,7 @@ package io.hkfullstack.securecapita.controller;
 
 import io.hkfullstack.securecapita.dto.UserDTO;
 import io.hkfullstack.securecapita.exception.ApiException;
-import io.hkfullstack.securecapita.model.SecureApiResponse;
-import io.hkfullstack.securecapita.model.LoginRequest;
-import io.hkfullstack.securecapita.model.User;
-import io.hkfullstack.securecapita.model.UserPrincipal;
+import io.hkfullstack.securecapita.model.*;
 import io.hkfullstack.securecapita.provider.TokenProvider;
 import io.hkfullstack.securecapita.service.RoleService;
 import io.hkfullstack.securecapita.service.UserService;
@@ -25,6 +22,8 @@ import java.net.URI;
 
 import static io.hkfullstack.securecapita.dtomapper.UserDTOMapper.*;
 import static io.hkfullstack.securecapita.utils.ExceptionUtils.processError;
+import static io.hkfullstack.securecapita.utils.UserUtils.getAuthenticatedUser;
+import static io.hkfullstack.securecapita.utils.UserUtils.getLoggedInUser;
 import static java.time.LocalDateTime.now;
 import static java.util.Map.of;
 import static org.springframework.http.HttpHeaders.AUTHORIZATION;
@@ -48,7 +47,7 @@ public class UserController {
     @PostMapping("/login")
     public  ResponseEntity<SecureApiResponse> login(@Valid @RequestBody LoginRequest loginRequest) {
         Authentication authentication = authenticateUser(loginRequest.getEmail(), loginRequest.getPassword());
-        UserDTO user = getAuthenticatedUser(authentication);
+        UserDTO user = getLoggedInUser(authentication);
         return user.isUsingMfa() ? sendVerificationCode(user) : sendApiResponse(user);
     }
 
@@ -100,7 +99,7 @@ public class UserController {
     public ResponseEntity<SecureApiResponse> generateNewAccessToken(HttpServletRequest request) {
         String token = request.getHeader(AUTHORIZATION).substring(TOKEN_PREFIX.length());
         if(isHeaderAndTokenValid(request, token)) {
-            UserDTO user = userService.getUserByEmail(tokenProvider.getSubject(token, request));
+            UserDTO user = userService.getUserByEmail(String.valueOf(tokenProvider.getSubject(token, request)));
             return ResponseEntity.ok()
                     .body(SecureApiResponse.builder().timestamp(now().toString())
                             .payload(of("user", user,
@@ -116,9 +115,9 @@ public class UserController {
     }
 
     private boolean isHeaderAndTokenValid(HttpServletRequest request, String token) {
-        String email = tokenProvider.getSubject(token, request);
+        Long id = tokenProvider.getSubject(token, request);
         String requestAuthHeader = request.getHeader(AUTHORIZATION);
-        return tokenProvider.isTokenValid(email, token) && requestAuthHeader != null && requestAuthHeader.startsWith(TOKEN_PREFIX);
+        return tokenProvider.isTokenValid(id, token) && requestAuthHeader != null && requestAuthHeader.startsWith(TOKEN_PREFIX);
     }
 
     @GetMapping("/verify/password/{key}")
@@ -146,12 +145,25 @@ public class UserController {
 
     @GetMapping("/profile")
     public ResponseEntity<SecureApiResponse> profile(Authentication authentication) {
-        UserDTO user = userService.getUserByEmail(authentication.getName());
+        UserDTO user = userService.getUserByEmail(getAuthenticatedUser(authentication).getEmail());
         return ResponseEntity.ok()
                 .body(SecureApiResponse.builder()
                         .timestamp(now().toString())
                         .payload(of("user", user))
                         .message("Profile retrieved successfully...")
+                        .status(OK)
+                        .statusCode(OK.value())
+                        .build());
+    }
+
+    @PatchMapping("/update")
+    public ResponseEntity<SecureApiResponse> updateUser(@RequestBody @Valid UpdateUserRequest request) {
+        UserDTO user = userService.updateUser(request);
+        return ResponseEntity.ok()
+                .body(SecureApiResponse.builder()
+                        .timestamp(now().toString())
+                        .payload(of("user", user))
+                        .message("User Details updated successfully.")
                         .status(OK)
                         .statusCode(OK.value())
                         .build());
@@ -182,12 +194,6 @@ public class UserController {
                                 .message("Verification Code sent").status(OK)
                                 .statusCode(OK.value()).build()
                 );
-    }
-
-    private UserDTO getAuthenticatedUser(Authentication authentication) {
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
-        UserDTO userDTO = principal.getUser();
-        return userDTO;
     }
 
     private Authentication authenticateUser(String email, String password) {

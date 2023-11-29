@@ -12,6 +12,7 @@ import io.hkfullstack.securecapita.service.UserService;
 import io.micrometer.common.util.StringUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static java.lang.System.currentTimeMillis;
@@ -33,7 +35,7 @@ public class TokenProvider {
 
     private static final String HK_INC = "HK_INC";
     private static final String SECURE_SERVICE = "SECURE_SERVICE";
-    private static final long ACCESS_TOKEN_EXPIRATION_TIME = 1_800_000;
+    private static final long ACCESS_TOKEN_EXPIRATION_TIME = 864_800_000;
     private static final String CLAIMS = "claims";
     private static final long REFRESH_TOKEN_EXPIRATION_TIME = 432_000_000;
     private final UserService userService;
@@ -44,7 +46,7 @@ public class TokenProvider {
     public String generateAccessToken(UserPrincipal userPrincipal) {
         String[] claims = getClaimsFromUser(userPrincipal);
         return JWT.create()
-                .withIssuer(HK_INC).withSubject(userPrincipal.getUsername())
+                .withIssuer(HK_INC).withSubject(String.valueOf(userPrincipal.getUser().getId()))
                 .withAudience(SECURE_SERVICE).withIssuedAt(new Date())
                 .withExpiresAt(new Date(currentTimeMillis() + ACCESS_TOKEN_EXPIRATION_TIME))
                 .withArrayClaim(CLAIMS, claims).sign(Algorithm.HMAC512(secret.getBytes()));
@@ -53,7 +55,7 @@ public class TokenProvider {
     public String generateRefreshToken(UserPrincipal userPrincipal) {
         String[] claims = getClaimsFromUser(userPrincipal);
         return JWT.create()
-                .withIssuer(HK_INC).withSubject(userPrincipal.getUsername())
+                .withIssuer(HK_INC).withSubject(String.valueOf(userPrincipal.getUser().getId()))
                 .withAudience(SECURE_SERVICE).withIssuedAt(new Date())
                 .withExpiresAt(new Date(currentTimeMillis() + REFRESH_TOKEN_EXPIRATION_TIME))
                 .sign(Algorithm.HMAC512(secret.getBytes()));
@@ -64,23 +66,23 @@ public class TokenProvider {
         return stream(claims).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
     }
 
-    public Authentication getAuthentication(String email, List<GrantedAuthority> authorities, HttpServletRequest request) {
-        UsernamePasswordAuthenticationToken userPassAuthToken = new UsernamePasswordAuthenticationToken(userService.getUserByEmail(email), null, authorities);
+    public Authentication getAuthentication(Long userId, List<GrantedAuthority> authorities, HttpServletRequest request) {
+        UsernamePasswordAuthenticationToken userPassAuthToken = new UsernamePasswordAuthenticationToken(userService.getUserById(userId), null, authorities);
         userPassAuthToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         return userPassAuthToken;
     }
 
-    public boolean isTokenValid(String email, String token) {
+    public boolean isTokenValid(Long id, String token) {
         JWTVerifier verifier = getJWTVerifier();
-        if(StringUtils.isNotEmpty(email) && !isTokenExpired(verifier, token))
+        if(Objects.nonNull(id) && !isTokenExpired(verifier, token))
             return true;
         throw new ApiException("Token invalid");
 //        return StringUtils.isNotEmpty(email) && !isTokenExpired(verifier, token);
     }
 
-    public String getSubject(String token, HttpServletRequest request) {
+    public Long getSubject(String token, HttpServletRequest request) {
         try {
-            return getJWTVerifier().verify(token).getSubject();
+            return Long.valueOf(getJWTVerifier().verify(token).getSubject());
         } catch (TokenExpiredException ex) {
             request.setAttribute("expiredMessage", ex.getMessage());
         } catch (InvalidClaimException ex) {
@@ -88,7 +90,7 @@ public class TokenProvider {
         } catch (Exception ex) {
             throw ex;
         }
-        return "";
+        return 0L;
     }
 
     private boolean isTokenExpired(JWTVerifier verifier, String token) {

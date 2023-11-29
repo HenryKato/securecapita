@@ -1,6 +1,7 @@
 package io.hkfullstack.securecapita.repository;
 
 import io.hkfullstack.securecapita.dto.UserDTO;
+import io.hkfullstack.securecapita.model.UpdateUserRequest;
 import io.hkfullstack.securecapita.model.User;
 
 import java.util.Collection;
@@ -10,7 +11,7 @@ public interface UserRepository<T extends User> {
     T createUser(T user, String accountVerificationUrl);
     T getUser(Long id);
     Collection<T> getUsers(int page, int pageSize);
-    void updateUser(T user);
+    T updateUser(UpdateUserRequest request);
     Boolean deleteUser(Long id);
 
     /*Complex CRUD Operations*/

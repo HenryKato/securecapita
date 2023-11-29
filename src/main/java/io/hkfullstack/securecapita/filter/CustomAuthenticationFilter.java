@@ -1,6 +1,5 @@
 package io.hkfullstack.securecapita.filter;
 
-import io.hkfullstack.securecapita.exception.ApiException;
 import io.hkfullstack.securecapita.provider.TokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -40,12 +39,12 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         try {
-            Map<String, String> requestValues = getRequestValues(request); // The token in the values here will have a prefix of "Bearer "
             String token = getToken(request); // This is actual token without the "Bearer " prefix
-            boolean isTokenValid = tokenProvider.isTokenValid(requestValues.get(EMAIL_KEY), token);
+            Long userId = getUserId(request);
+            boolean isTokenValid = tokenProvider.isTokenValid(userId, token);
             if(isTokenValid) {
-                List<GrantedAuthority> authorities = tokenProvider.getUserClaimsFromToken(requestValues.get(TOKEN_KEY));
-                Authentication authentication = tokenProvider.getAuthentication(requestValues.get(EMAIL_KEY), authorities, request);
+                List<GrantedAuthority> authorities = tokenProvider.getUserClaimsFromToken(token);
+                Authentication authentication = tokenProvider.getAuthentication(userId, authorities, request);
                 SecurityContextHolder.getContext().setAuthentication(authentication); // Authenticated user
             } else {
                 SecurityContextHolder.clearContext();
@@ -72,7 +71,7 @@ public class CustomAuthenticationFilter extends OncePerRequestFilter {
 
     }
 
-    private Map<String, String> getRequestValues(HttpServletRequest request) {
-        return of(EMAIL_KEY, tokenProvider.getSubject(getToken(request), request), TOKEN_KEY, getToken(request));
+    private Long getUserId(HttpServletRequest request) {
+        return tokenProvider.getSubject(getToken(request), request);
     }
 }
